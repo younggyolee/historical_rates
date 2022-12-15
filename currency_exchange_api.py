@@ -2,6 +2,7 @@ import requests
 import json
 import datetime
 from typing import List
+from fastapi import HTTPException
 
 def convert_unix_timestamp_to_date(unix_timestamp: int) -> str:
     return datetime.date.fromtimestamp(int(str(unix_timestamp)[:10])).strftime('%Y-%m-%d')
@@ -40,5 +41,12 @@ def get_historical_rates(
         "&end_date=" + end_date
     )
     res = requests.get(url)
-    data = json.loads(res.text)['widget'][0]['data']
-    return list(map(lambda x: [convert_unix_timestamp_to_date(x[0]), x[1]], data))
+    if res.status_code == 200:
+        data = json.loads(res.text)['widget'][0]['data']
+        return list(map(lambda x: [convert_unix_timestamp_to_date(x[0]), x[1]], data))
+    elif res.status_code == 400:
+        print(res.text)
+        raise HTTPException(status_code=400, detail='Invalid input')
+    else:
+        print(res.text)
+        raise HTTPException(status_code=500, detail='External API error')

@@ -1,18 +1,17 @@
 import requests
 import json
 import datetime
-# from typing import List
+from typing import List
 
-def convert_unix_timestamp_to_date(unix_timestamp: int) -> datetime.date:
-    return datetime.date.fromtimestamp(int(str(unix_timestamp)[:10]))
+def convert_unix_timestamp_to_date(unix_timestamp: int) -> str:
+    return datetime.date.fromtimestamp(int(str(unix_timestamp)[:10])).strftime('%Y-%m-%d')
 
-def get_historical_rate(
+def get_historical_rates(
     base_currency: str,
     quote_currency: str,
     start_date: str,
     end_date: str
-):
-# ) -> List[List[datetime.date, str]]:
+) -> List[list]:
     '''
     input:
         base_currency = 'USD'
@@ -21,8 +20,8 @@ def get_historical_rate(
         end_date = '2022-12-05'
 
     return:
-        List[[date: datetime.date, rate: str]]
-        [[datetime.date(2022, 12, 04), '1294.872107'], [datetime.date(2022, 12, 05), '1299.220955']]
+        List[[date: str, rate: str]]
+        [['2022-12-04', '1294.872107'], ['2022-12-05', '1299.220955']]
     '''
 
     url = (

@@ -1,7 +1,8 @@
 import collections
-from typing import List, Dict
-from fastapi import FastAPI, HTTPException
+from typing import List, Dict, Union, Tuple
+from fastapi import FastAPI, HTTPException, Query
 from currency_exchange_api import get_historical_rates
+from pydantic import Required
 
 app = FastAPI()
 
@@ -13,43 +14,19 @@ class Interval:
         self.start_date = start_date
         self.end_date = end_date
 
-def validate_raw_key(raw_key: str):
-    if len(raw_key) != 14:
-        return False
-    return True
-
-def validate_raw_key_list(raw_key_list: List[str]):
-    if not raw_key_list:
-        raise HTTPException(status_code=400, detail='Invalid input: Empty keys')
-    for raw_key in raw_key_list:
-        if not validate_raw_key(raw_key):
-            raise HTTPException(status_code=400, detail=f'Invalid input: {raw_key}')
-
-def convert_to_key(raw_key: str):
-    # raw_key = 'USDKRW20221202'
-    base_currency = raw_key[: 3].upper()
-    quote_currency = raw_key[3 : 6].upper()
-    date = f'{raw_key[6 : 10]}-{raw_key[10 : 12]}-{raw_key[12 : 14]}'
-    return (base_currency, quote_currency, date)
-
-@app.get("/historical-rates/")
-def read_root(queries: str):
-    raw_key_list = queries.split(',')
-    validate_raw_key_list(raw_key_list)
-    key_list = [convert_to_key(raw_key) for raw_key in raw_key_list]
-
-    currency_pairs = collections.defaultdict(Interval)
+def get_key_to_rate(keys):
+    currency_pairs_to_interval = collections.defaultdict(Interval)
     key_to_rate: Dict[tuple, str] = {} # (base_currency, quote_currency, date) => exchange_rate
                                        # e.g. {('USD', 'KRW', '2022-12-02'): '1299.369441'}
-    for key in key_list:
+    for key in keys:
         key_to_rate[key] = ''
 
         base_currency, quote_currency, date = key
-        interval = currency_pairs[(base_currency, quote_currency)]
+        interval = currency_pairs_to_interval[(base_currency, quote_currency)]
         interval.start_date = min(interval.start_date, date)
         interval.end_date = max(interval.end_date, date)
 
-    for pair, interval in currency_pairs.items():
+    for pair, interval in currency_pairs_to_interval.items():
         base_cur, quote_cur = pair
         start_date, end_date = interval.start_date, interval.end_date
         fetched = get_historical_rates(base_cur, quote_cur, start_date, end_date)
@@ -57,5 +34,18 @@ def read_root(queries: str):
             key = (base_cur, quote_cur, date)
             if key in key_to_rate:
                 key_to_rate[key] = rate
+    return key_to_rate
 
-    return [key_to_rate[key] for key in key_list]
+def convert_to_key(q: str) -> Tuple[str, str, str]:
+    # 'USD,KRW,2022-12-02' -> ('USD', 'KRW', '2022-12-02')
+    base_currency, quote_currency, date = q.split(',')
+    return (base_currency, quote_currency, date)
+
+@app.get("/historical-rates/")
+def read_root(query: List[str] = Query(
+    default=Required,
+    regex='^[A-Z]{3}\,[A-Z]{3}\,[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+)):
+    keys = [convert_to_key(q) for q in query]
+    key_to_rate = get_key_to_rate(keys)
+    return [key_to_rate[key] for key in keys]

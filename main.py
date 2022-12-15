@@ -1,6 +1,6 @@
 import collections
-from typing import List, Dict, Union, Tuple
-from fastapi import FastAPI, HTTPException, Query
+from typing import List, Dict, Tuple
+from fastapi import FastAPI, Query
 from currency_exchange_api import get_historical_rates
 from pydantic import Required
 
@@ -14,7 +14,7 @@ class Interval:
         self.start_date = start_date
         self.end_date = end_date
 
-def get_key_to_rate(keys):
+def get_key_to_rate(keys: List[tuple]):
     currency_pairs_to_interval = collections.defaultdict(Interval)
     key_to_rate: Dict[tuple, str] = {} # (base_currency, quote_currency, date) => exchange_rate
                                        # e.g. {('USD', 'KRW', '2022-12-02'): '1299.369441'}

@@ -9,13 +9,12 @@ app = FastAPI()
 
 MIN_DATE = '1900-01-01'
 MAX_DATE = '2999-12-31'
-
 class Interval:
     def __init__(self, start_date: str=MAX_DATE, end_date: str=MIN_DATE):
         self.start_date = start_date
         self.end_date = end_date
 
-async def fetch(pair, interval: Interval, key_to_rate):
+async def fetch_rates_for_currency_pair(pair, interval: Interval, key_to_rate):
     base_cur, quote_cur = pair
     start_date, end_date = interval.start_date, interval.end_date
     fetched = await get_historical_rates(base_cur, quote_cur, start_date, end_date)
@@ -36,7 +35,7 @@ async def get_key_to_rate(keys: List[tuple]):
         interval.start_date = min(interval.start_date, date)
         interval.end_date = max(interval.end_date, date)
 
-    jobs = [fetch(pair, interval, key_to_rate) for pair, interval in currency_pairs_to_interval.items()]
+    jobs = [fetch_rates_for_currency_pair(pair, interval, key_to_rate) for pair, interval in currency_pairs_to_interval.items()]
     await asyncio.gather(*jobs)
     return key_to_rate
 
@@ -46,7 +45,7 @@ def convert_to_key(q: str) -> Tuple[str, str, str]:
     return (base_currency, quote_currency, date)
 
 @app.get("/currency-exchange/historical-rates/", response_model=List[str])
-async def read_root(query: List[str] = Query(
+async def get_historical_rates(query: List[str] = Query(
     default=Required,
     regex='^[A-Z]{3}\,[A-Z]{3}\,[0-9]{4}-[0-9]{2}-[0-9]{2}$'
 )):

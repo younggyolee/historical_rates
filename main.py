@@ -1,9 +1,9 @@
 import collections
+import asyncio
 from typing import List, Dict, Tuple
 from fastapi import FastAPI, Query
-from currency_exchange_api import get_historical_rates
 from pydantic import Required
-import asyncio
+from currency_exchange_api import get_historical_rates
 
 app = FastAPI()
 
@@ -15,7 +15,7 @@ class Interval:
         self.start_date = start_date
         self.end_date = end_date
 
-async def fetch(pair, interval, key_to_rate):
+async def fetch(pair, interval: Interval, key_to_rate):
     base_cur, quote_cur = pair
     start_date, end_date = interval.start_date, interval.end_date
     fetched = await get_historical_rates(base_cur, quote_cur, start_date, end_date)

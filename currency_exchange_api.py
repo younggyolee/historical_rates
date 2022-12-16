@@ -1,4 +1,4 @@
-import requests
+import httpx
 import json
 import datetime
 from typing import List
@@ -7,7 +7,7 @@ from fastapi import HTTPException
 def convert_unix_timestamp_to_date(unix_timestamp: int) -> str:
     return datetime.date.fromtimestamp(int(str(unix_timestamp)[:10])).strftime('%Y-%m-%d')
 
-def get_historical_rates(
+async def get_historical_rates(
     base_currency: str,
     quote_currency: str,
     start_date: str,
@@ -40,7 +40,8 @@ def get_historical_rates(
         "&start_date=" + start_date +
         "&end_date=" + end_date
     )
-    res = requests.get(url)
+    async with httpx.AsyncClient() as client:
+        res = await client.get(url)
     if res.status_code == 200:
         data = json.loads(res.text)['widget'][0]['data']
         return list(map(lambda x: [convert_unix_timestamp_to_date(x[0]), x[1]], data))

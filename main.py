@@ -3,6 +3,7 @@ from typing import List, Dict, Tuple
 from fastapi import FastAPI, Query
 from currency_exchange_api import get_historical_rates
 from pydantic import Required
+import asyncio
 
 app = FastAPI()
 
@@ -14,7 +15,16 @@ class Interval:
         self.start_date = start_date
         self.end_date = end_date
 
-def get_key_to_rate(keys: List[tuple]):
+async def fetch(pair, interval, key_to_rate):
+    base_cur, quote_cur = pair
+    start_date, end_date = interval.start_date, interval.end_date
+    fetched = await get_historical_rates(base_cur, quote_cur, start_date, end_date)
+    for date, rate in fetched:
+        key = (base_cur, quote_cur, date)
+        if key in key_to_rate:
+            key_to_rate[key] = rate
+
+async def get_key_to_rate(keys: List[tuple]):
     currency_pairs_to_interval = collections.defaultdict(Interval)
     key_to_rate: Dict[tuple, str] = {} # (base_currency, quote_currency, date) => exchange_rate
                                        # e.g. {('USD', 'KRW', '2022-12-02'): '1299.369441'}
@@ -26,14 +36,8 @@ def get_key_to_rate(keys: List[tuple]):
         interval.start_date = min(interval.start_date, date)
         interval.end_date = max(interval.end_date, date)
 
-    for pair, interval in currency_pairs_to_interval.items():
-        base_cur, quote_cur = pair
-        start_date, end_date = interval.start_date, interval.end_date
-        fetched = get_historical_rates(base_cur, quote_cur, start_date, end_date)
-        for date, rate in fetched:
-            key = (base_cur, quote_cur, date)
-            if key in key_to_rate:
-                key_to_rate[key] = rate
+    jobs = [fetch(pair, interval, key_to_rate) for pair, interval in currency_pairs_to_interval.items()]
+    await asyncio.gather(*jobs)
     return key_to_rate
 
 def convert_to_key(q: str) -> Tuple[str, str, str]:
@@ -42,10 +46,10 @@ def convert_to_key(q: str) -> Tuple[str, str, str]:
     return (base_currency, quote_currency, date)
 
 @app.get("/historical-rates/", response_model=List[str])
-def read_root(query: List[str] = Query(
+async def read_root(query: List[str] = Query(
     default=Required,
     regex='^[A-Z]{3}\,[A-Z]{3}\,[0-9]{4}-[0-9]{2}-[0-9]{2}$'
 )):
     keys = [convert_to_key(q) for q in query]
-    key_to_rate = get_key_to_rate(keys)
+    key_to_rate = await get_key_to_rate(keys)
     return [key_to_rate[key] for key in keys]

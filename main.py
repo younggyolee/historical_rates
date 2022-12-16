@@ -45,7 +45,7 @@ def convert_to_key(q: str) -> Tuple[str, str, str]:
     base_currency, quote_currency, date = q.split(',')
     return (base_currency, quote_currency, date)
 
-@app.get("/historical-rates/", response_model=List[str])
+@app.get("/currency-exchange/historical-rates/", response_model=List[str])
 async def read_root(query: List[str] = Query(
     default=Required,
     regex='^[A-Z]{3}\,[A-Z]{3}\,[0-9]{4}-[0-9]{2}-[0-9]{2}$'

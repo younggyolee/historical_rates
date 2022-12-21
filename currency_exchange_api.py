@@ -7,7 +7,7 @@ from fastapi import HTTPException
 def convert_unix_timestamp_to_date(unix_timestamp: int) -> str:
     return datetime.date.fromtimestamp(int(str(unix_timestamp)[:10])).strftime('%Y-%m-%d')
 
-async def get_historical_rates(
+async def fetch_historical_rates(
     base_currency: str,
     quote_currency: str,
     start_date: str,
